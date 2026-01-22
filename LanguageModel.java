@@ -85,35 +85,38 @@ public class LanguageModel {
                 return cd.chr;
             }
         }
-        return (cd != null) ? cd.chr : ' '; // Default return if list is empty
+        return (cd != null) ? cd.chr : ' ';
     }
 
     /**
      * Generates a random text, based on the probabilities that were learned during training. 
      */
     public String generate(String initialText, int textLength) {
-        // אם הטקסט ההתחלתי כבר ארוך או שווה לאורך המבוקש, מחזירים אותו כפי שהוא
-        if (initialText.length() >= textLength) {
-            return initialText;
-        }
-
-        // אם הטקסט ההתחלתי קצר מאורך החלון, לא ניתן לייצר המשך לפי המודל
+        // אם הטקסט ההתחלתי קצר מאורך החלון, אי אפשר להמשיך לפי המודל
         if (initialText.length() < windowLength) {
             return initialText;
         }
         
+        // אם הטקסט הקיים כבר הגיע לאורך המבוקש או עבר אותו
+        if (initialText.length() >= textLength) {
+            return initialText;
+        }
+
         StringBuilder result = new StringBuilder(initialText);
-        
-        // הלולאה רצה עד שהאורך הכולל של result מגיע ל-textLength המבוקש
+        // יצירת החלון הנוכחי מתוך סוף ה-initialText
+        String window = initialText.substring(initialText.length() - windowLength);
+
+        // הלולאה רצה עד שהטקסט ב-result מגיע לאורך textLength הכולל
         while (result.length() < textLength) {
-            // לקיחת החלון הנוכחי (windowLength התווים האחרונים בתוך מה שנבנה עד כה)
-            String currentWindow = result.substring(result.length() - windowLength);
-            List probs = CharDataMap.get(currentWindow);
+            List probs = CharDataMap.get(window);
             
             if (probs != null) {
-                 result.append(getRandomChar(probs));
+                char nextChar = getRandomChar(probs);
+                result.append(nextChar);
+                // הזזת החלון: מורידים תו מההתחלה ומוסיפים את התו החדש
+                window = window.substring(1) + nextChar;
             } else {
-                // אם אין נתונים לחלון זה במפה, עוצרים ומחזירים את מה שיש
+                // אם הגענו לקומבינציה שלא קיימת במודל, עוצרים
                 break;
             }
         }
