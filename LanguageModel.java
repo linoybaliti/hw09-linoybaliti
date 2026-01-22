@@ -92,23 +92,28 @@ public class LanguageModel {
      * Generates a random text, based on the probabilities that were learned during training. 
      */
     public String generate(String initialText, int textLength) {
-        // אם הטקסט ההתחלתי קצר מאורך החלון, לא ניתן לייצר המשך
+        // אם הטקסט ההתחלתי כבר ארוך או שווה לאורך המבוקש, מחזירים אותו כפי שהוא
+        if (initialText.length() >= textLength) {
+            return initialText;
+        }
+
+        // אם הטקסט ההתחלתי קצר מאורך החלון, לא ניתן לייצר המשך לפי המודל
         if (initialText.length() < windowLength) {
             return initialText;
         }
         
         StringBuilder result = new StringBuilder(initialText);
         
-        // התיקון הקריטי: textLength הוא מספר התווים שיש להוסיף לטקסט הקיים
-        for (int i = 0; i < textLength; i++) {
-            // לקיחת החלון הנוכחי (הסוף של מה שנבנה עד כה)
+        // הלולאה רצה עד שהאורך הכולל של result מגיע ל-textLength המבוקש
+        while (result.length() < textLength) {
+            // לקיחת החלון הנוכחי (windowLength התווים האחרונים בתוך מה שנבנה עד כה)
             String currentWindow = result.substring(result.length() - windowLength);
             List probs = CharDataMap.get(currentWindow);
             
             if (probs != null) {
                  result.append(getRandomChar(probs));
             } else {
-                // אם אין נתונים לחלון זה, עוצרים
+                // אם אין נתונים לחלון זה במפה, עוצרים ומחזירים את מה שיש
                 break;
             }
         }
