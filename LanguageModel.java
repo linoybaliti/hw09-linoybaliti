@@ -34,19 +34,25 @@ public class LanguageModel {
             probabilities.update(nextChar);
             window = window.substring(1) + nextChar; 
         }
-        for (List list : CharDataMap.values()) calculateProbabilities(list);
+        for (List list : CharDataMap.values()) {
+            calculateProbabilities(list);
+        }
     }
 
     void calculateProbabilities(List probs) {               
-        int count = 0;
-        for (int i = 0; i < probs.getSize(); i++) {
-            count += probs.get(i).count;
+        int totalCount = 0;
+        // חישוב סך המופעים בעזרת איטרטור
+        ListIterator it = probs.listIterator(0);
+        while (it.hasNext()) {
+            totalCount += it.next().count;
         }
+
         double cumulativeProb = 0.0;
-        // חשוב: עוברים מהסוף להתחלה כי השתמשנו ב-addFirst
-        for (int i = probs.getSize() - 1; i >= 0; i--) {
-            CharData cd = probs.get(i);
-            cd.p = (double) cd.count / count;
+        // חישוב הסתברות והסתברות מצטברת
+        it = probs.listIterator(0);
+        while (it.hasNext()) {
+            CharData cd = it.next();
+            cd.p = (double) cd.count / totalCount;
             cumulativeProb += cd.p;
             cd.cp = cumulativeProb;
         }
@@ -54,16 +60,20 @@ public class LanguageModel {
 
     char getRandomChar(List probs) {
         double r = randomGenerator.nextDouble();
-        // עוברים מהסוף להתחלה כדי להתאים ל-calculateProbabilities
-        for (int i = probs.getSize() - 1; i >= 0; i--) {
-            CharData cd = probs.get(i);
-            if (r < cd.cp) return cd.chr;
+        ListIterator it = probs.listIterator(0);
+        CharData last = null;
+        while (it.hasNext()) {
+            last = it.next();
+            if (r < last.cp) {
+                return last.chr;
+            }
         }
-        return probs.get(0).chr;
+        return last.chr;
     }
 
     public String generate(String initialText, int textLength) {
         if (initialText.length() < windowLength) return initialText;
+        
         StringBuilder result = new StringBuilder(initialText);
         String window = initialText.substring(initialText.length() - windowLength);
 
@@ -73,7 +83,9 @@ public class LanguageModel {
                 char nextChar = getRandomChar(probs);
                 result.append(nextChar);
                 window = window.substring(1) + nextChar;
-            } else break;
+            } else {
+                break;
+            }
         }
         return result.toString();
     }
