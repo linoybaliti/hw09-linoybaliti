@@ -4,7 +4,7 @@ import java.util.Random;
 public class LanguageModel {
 
     // The map of this model.
-    // Maps windows to lists of charachter data objects.
+    // Maps windows to lists of character data objects.
     HashMap<String, List> CharDataMap;
     
     // The window length used in this model.
@@ -35,10 +35,12 @@ public class LanguageModel {
     public void train(String fileName) {
         In in = new In(fileName);
         String window = "";
-        for (int i = 0; i < windowLength; i++){
-            window += in.readChar();
+        for (int i = 0; i < windowLength; i++) {
+            if (!in.isEmpty()) {
+                window += in.readChar();
+            }
         }
-        while (!in.isEmpty()){
+        while (!in.isEmpty()) {
             char nextChar = in.readChar();
             List probabilities = CharDataMap.get(window);
             if (probabilities == null) {
@@ -59,8 +61,9 @@ public class LanguageModel {
     void calculateProbabilities(List probs) {               
         int count = 0;
         ListIterator it = probs.listIterator(0);
-        while (it.hasNext())
+        while (it.hasNext()) {
             count += it.next().count;
+        }
         double cumulativeProb = 0.0;
         it = probs.listIterator(0);
         while (it.hasNext()) {
@@ -76,37 +79,40 @@ public class LanguageModel {
         double r = randomGenerator.nextDouble();
         ListIterator it = probs.listIterator(0);
         CharData cd = null;
-        while (it.hasNext()){
+        while (it.hasNext()) {
             cd = it.next();
-            if (r < cd.cp)
+            if (r < cd.cp) {
                 return cd.chr;
+            }
         }
-        return cd.chr;
+        return (cd != null) ? cd.chr : ' '; // Default return if list is empty
     }
 
     /**
      * Generates a random text, based on the probabilities that were learned during training. 
      */
     public String generate(String initialText, int textLength) {
-        if (initialText.length() < windowLength)
+        // אם הטקסט ההתחלתי קצר מאורך החלון, לא ניתן לייצר המשך
+        if (initialText.length() < windowLength) {
             return initialText;
+        }
         
-        String result = initialText;
-        // התיקון כאן: textLength הוא האורך הסופי הכולל
-        int totalLength = textLength; 
+        StringBuilder result = new StringBuilder(initialText);
         
-        while (result.length() < totalLength){
-            String current = result.substring(result.length() - windowLength);
-            List probs = CharDataMap.get(current);
-            if (probs != null){
-                 char nextChar = getRandomChar(probs);
-                 result += nextChar;
-            }
-            else {
-                return result;
+        // התיקון הקריטי: textLength הוא מספר התווים שיש להוסיף לטקסט הקיים
+        for (int i = 0; i < textLength; i++) {
+            // לקיחת החלון הנוכחי (הסוף של מה שנבנה עד כה)
+            String currentWindow = result.substring(result.length() - windowLength);
+            List probs = CharDataMap.get(currentWindow);
+            
+            if (probs != null) {
+                 result.append(getRandomChar(probs));
+            } else {
+                // אם אין נתונים לחלון זה, עוצרים
+                break;
             }
         }
-        return result;
+        return result.toString();
     }
 
     /** Returns a string representing the map of this language model. */
@@ -120,10 +126,12 @@ public class LanguageModel {
     }
 
     public static void main(String[] args) {
+        if (args.length < 5) return;
+        
         int windowLength = Integer.parseInt(args[0]); 
         String initialText = args[1]; 
         int generatedTextLength = Integer.parseInt(args[2]); 
-        Boolean randomGeneration = args[3].equals("random"); 
+        boolean randomGeneration = args[3].equals("random"); 
         String fileName = args[4]; 
 
         LanguageModel lm; 
