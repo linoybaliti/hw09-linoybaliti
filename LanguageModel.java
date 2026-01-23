@@ -21,9 +21,13 @@ public class LanguageModel {
     public void train(String fileName) {
         In in = new In(fileName);
         String window = "";
+        // אתחול החלון הראשון
         for (int i = 0; i < windowLength; i++) {
-            if (!in.isEmpty()) window += in.readChar();
+            if (!in.isEmpty()) {
+                window += in.readChar();
+            }
         }
+        // קריאת שאר הקובץ ועדכון המפה
         while (!in.isEmpty()) {
             char nextChar = in.readChar();
             List probabilities = CharDataMap.get(window);
@@ -34,25 +38,25 @@ public class LanguageModel {
             probabilities.update(nextChar);
             window = window.substring(1) + nextChar; 
         }
+
+        // חישוב הסתברויות לכל הרשימות במפה
         for (List list : CharDataMap.values()) {
             calculateProbabilities(list);
         }
     }
 
     void calculateProbabilities(List probs) {               
-        int totalCount = 0;
-        // חישוב סך המופעים בעזרת איטרטור
+        int count = 0;
         ListIterator it = probs.listIterator(0);
         while (it.hasNext()) {
-            totalCount += it.next().count;
+            count += it.next().count;
         }
-
+        
         double cumulativeProb = 0.0;
-        // חישוב הסתברות והסתברות מצטברת
         it = probs.listIterator(0);
         while (it.hasNext()) {
             CharData cd = it.next();
-            cd.p = (double) cd.count / totalCount;
+            cd.p = (double) cd.count / count;
             cumulativeProb += cd.p;
             cd.cp = cumulativeProb;
         }
@@ -61,32 +65,62 @@ public class LanguageModel {
     char getRandomChar(List probs) {
         double r = randomGenerator.nextDouble();
         ListIterator it = probs.listIterator(0);
-        CharData last = null;
+        CharData cd = null;
         while (it.hasNext()) {
-            last = it.next();
-            if (r < last.cp) {
-                return last.chr;
+            cd = it.next();
+            if (r < cd.cp) {
+                return cd.chr;
             }
         }
-        return last.chr;
+        return cd.chr;
     }
 
     public String generate(String initialText, int textLength) {
-        if (initialText.length() < windowLength) return initialText;
+        if (initialText.length() < windowLength) {
+            return initialText;
+        }
         
         StringBuilder result = new StringBuilder(initialText);
-        String window = initialText.substring(initialText.length() - windowLength);
-
+        // הלולאה רצה עד שהאורך הכולל מגיע ל-textLength
         while (result.length() < textLength) {
-            List probs = CharDataMap.get(window);
+            String currentWindow = result.substring(result.length() - windowLength);
+            List probs = CharDataMap.get(currentWindow);
+            
             if (probs != null) {
                 char nextChar = getRandomChar(probs);
                 result.append(nextChar);
-                window = window.substring(1) + nextChar;
             } else {
+                // אם החלון לא נמצא במפה, אין לנו איך להמשיך
                 break;
             }
         }
         return result.toString();
+    }
+
+    public String toString() {
+        StringBuilder str = new StringBuilder();
+        for (String key : CharDataMap.keySet()) {
+            List keyProbs = CharDataMap.get(key);
+            str.append(key + " : " + keyProbs + "\n");
+        }
+        return str.toString();
+    }
+
+    public static void main(String[] args) {
+        int windowLength = Integer.parseInt(args[0]); 
+        String initialText = args[1]; 
+        int generatedTextLength = Integer.parseInt(args[2]); 
+        boolean randomGeneration = args[3].equals("random"); 
+        String fileName = args[4]; 
+
+        LanguageModel lm; 
+        if (randomGeneration) {
+            lm = new LanguageModel(windowLength);
+        } else {
+            lm = new LanguageModel(windowLength, 20); 
+        }
+
+        lm.train(fileName); 
+        System.out.println(lm.generate(initialText, generatedTextLength)); 
     }
 }
